@@ -180,23 +180,34 @@ void eval(char *cmdline)
 
     struct job_t *job;
 
+    sigset_t mask;
+
+    memset(&mask, 0, sizeof(mask)); //http://www.linuxprogrammingblog.com/code-examples/blocking-signals-with-sigprocmask
+
     bg = parseline(cmdline, argv);
     if (!builtin_cmd(argv)) {
+
+        sigprocmask(SIG_BLOCK, &mask, NULL);
         if ((pid = fork()) == 0) { //child runs user job
+            sigprocmask(SIG_UNBLOCK, &mask, NULL);
+            setpgid(0,0); // workaround so child will not be a member of the foreground proccess group
+
             if (execve(argv[0], argv, environ) < 0) {
                 printf("%s: Command not found. \n", argv[0]);
                 exit(0);
             }
         }
 
+        
         addjob(jobs, pid, bg ? BG : FG, cmdline);
+        sigprocmask(SIG_UNBLOCK, &mask, NULL);
 
         if (!bg) { //parent wait for fg job to terminate
             waitfg(pid);
            
         } else { //otherwise dont wait for bg job
             job = getjobpid(jobs, pid);
-            printf("[%d] (%d) %s\n", job->jid, job->pid, cmdline);
+            printf("[%d] (%d) %s", job->jid, job->pid, cmdline);
         }
     }
     return;
@@ -290,15 +301,80 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
-    // if (!strcmp(argv[0], 'fg')) { //add to fg
+
+    struct job_t *job = NULL;
+
+    int id;
+    // int pid;
+    // int id = atoi(argv[1]);
+    if (argv[1] == NULL) {
+        printf("too few arguments \n");
+        return;
+    }
+
+    if (argv[1][0] == '%') {
+        // printf("YES\n");
+        //get job by jid
+
+        id = atoi(&argv[1][1]);
+
+        // printf("%d \n", id);
+
+    
+        // job->jid = id;
+        // printf("blaa\n");
+        job = getjobjid(jobs, id);
+
+        // printf("foo \n");
+    
+    }
+
+    if (isdigit(argv[1][0])) {
+        //get by pid
+
+        id = atoi(&argv[1][0]);
+
+        job = getjobpid(jobs, id);
+
+       
+    }
+
+     if (job == NULL) {
+            printf("%s: No such job\n", argv[1]);
+            return;
+        }
+
+    //SIGCONT 
+    if (!strcmp(argv[0], "fg")) { //add to fg
+        // printf("1\n");
         
+        int p_id = job->pid;
+        // printf("2\n");
 
-    // } else if (!strcmp(argv[0], 'bg')) { //add to bg
+        kill(-p_id, SIGCONT);
+        // printf("3\n");
 
-        
+        job->state = FG;
+        // printf("4\n");
+
+        waitfg(p_id);
+        // printf("5\n");
 
 
-    // }
+    } else if (!strcmp(argv[0], "bg")) { //add to bg
+
+        int p_id = job->pid;
+        // printf("2\n");
+
+        kill(-p_id, SIGCONT);
+        // printf("3\n");
+
+        job->state = BG;
+        // printf("4\n");
+        printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
+
+
+    }
 
     return;
 }
@@ -334,7 +410,8 @@ void sigchld_handler(int sig)
     pid_t pid;
     int status;
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-        deletejob(jobs, pid);
+        deletejob(jobs, pid); //remove job from job array
+
     }
 
     return;
@@ -347,6 +424,19 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
+    // printf("CTRL C\n");
+
+    pid_t pid = fgpid(jobs);
+    // printf("%d\n", pid );
+    struct job_t *job = getjobpid(jobs, pid);
+
+    if (pid > 0) {
+        printf("Job [%d] (%d) terminated by signal %d\n",job->jid, pid, sig);
+        kill(-pid, SIGINT);
+    }   
+
+
+
     return;
 }
 
@@ -357,6 +447,17 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
+
+    pid_t pid = fgpid(jobs);
+    // printf("%d\n", pid );
+    struct job_t *job = getjobpid(jobs, pid);
+
+    if (pid > 0) {
+        job->state = ST;
+        printf("Job [%d] (%d) stopped by signal %d\n",job->jid, pid, sig);
+        kill(-pid, SIGTSTP);
+    }   
+
     return;
 }
 
