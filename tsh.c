@@ -178,6 +178,8 @@ void eval(char *cmdline)
     int bg; //should the job be in fg or bg?
     pid_t pid; //proccess id
 
+    struct job_t *job;
+
     bg = parseline(cmdline, argv);
     if (!builtin_cmd(argv)) {
         if ((pid = fork()) == 0) { //child runs user job
@@ -187,13 +189,14 @@ void eval(char *cmdline)
             }
         }
 
+        addjob(jobs, pid, bg ? BG : FG, cmdline);
+
         if (!bg) { //parent wait for fg job to terminate
-            int status;
-            if (waitpid(pid, &status, 0) < 0){
-                unix_error("waitfg: waitpid error");
-            }
+            waitfg(pid);
+           
         } else { //otherwise dont wait for bg job
-            printf("%d %s", pid, cmdline);
+            job = getjobpid(jobs, pid);
+            printf("[%d] (%d) %s\n", job->jid, job->pid, cmdline);
         }
     }
     return;
@@ -287,16 +290,15 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
-    if (!strcmp(argv[0] == 'fg')) { //add to fg
+    // if (!strcmp(argv[0], 'fg')) { //add to fg
+        
+
+    // } else if (!strcmp(argv[0], 'bg')) { //add to bg
 
         
 
-    } else if (!strcmp(argv[0] == 'bg')) { //add to bg
 
-        
-
-
-    }
+    // }
 
     return;
 }
@@ -306,6 +308,12 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
+    struct job_t *job = getjobpid(jobs, pid);
+
+    while (job->state == FG) {
+        sleep(1);
+    }
+
     return;
 }
 
@@ -322,6 +330,13 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
+
+    pid_t pid;
+    int status;
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+        deletejob(jobs, pid);
+    }
+
     return;
 }
 
