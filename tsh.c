@@ -305,28 +305,18 @@ void do_bgfg(char **argv)
     struct job_t *job = NULL;
 
     int id;
-    // int pid;
-    // int id = atoi(argv[1]);
+
     if (argv[1] == NULL) {
         printf("too few arguments \n");
         return;
     }
 
     if (argv[1][0] == '%') {
-        // printf("YES\n");
         //get job by jid
 
         id = atoi(&argv[1][1]);
 
-        // printf("%d \n", id);
-
-    
-        // job->jid = id;
-        // printf("blaa\n");
-        job = getjobjid(jobs, id);
-
-        // printf("foo \n");
-    
+        job = getjobjid(jobs, id);   
     }
 
     if (isdigit(argv[1][0])) {
@@ -334,9 +324,7 @@ void do_bgfg(char **argv)
 
         id = atoi(&argv[1][0]);
 
-        job = getjobpid(jobs, id);
-
-       
+        job = getjobpid(jobs, id);    
     }
 
      if (job == NULL) {
@@ -346,31 +334,20 @@ void do_bgfg(char **argv)
 
     //SIGCONT 
     if (!strcmp(argv[0], "fg")) { //add to fg
-        // printf("1\n");
         
         int p_id = job->pid;
-        // printf("2\n");
 
-        kill(-p_id, SIGCONT);
-        // printf("3\n");
-
-        job->state = FG;
-        // printf("4\n");
-
-        waitfg(p_id);
-        // printf("5\n");
+        kill(-p_id, SIGCONT);              //kill the job and send SIGCONT
+        job->state = FG;                   //Change the state of the job
+        waitfg(p_id);                      //Wait for the job to finish
 
 
     } else if (!strcmp(argv[0], "bg")) { //add to bg
 
         int p_id = job->pid;
-        // printf("2\n");
 
-        kill(-p_id, SIGCONT);
-        // printf("3\n");
-
-        job->state = BG;
-        // printf("4\n");
+        kill(-p_id, SIGCONT);           //kill the job and send SIGCONT
+        job->state = BG;                //Change the state of the job
         printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
 
 
@@ -422,17 +399,15 @@ void sigchld_handler(int sig)
             
 
         } else if (WIFSIGNALED(status)) {
+            //Returns the number of the signal that caused the child process to terminate. This status is only defined if WIFSIGNALED(status) returned true. (Book p.725)
             printf("Job [%d] (%d) terminated by signal %d \n",job->jid, pid, WTERMSIG(status));
             deletejob(jobs, pid); //remove job from job array
 
         } else if (WIFSTOPPED(status)) {
             job->state = ST;
+            //WSTOPSIG Returns the number of the signal that caused the child to stop. This status is only defined if WIFSTOPPED(status) returned true. (Book p.725)
             printf("Job [%d] (%d) stopped by signal %d \n",job->jid, pid, WSTOPSIG(status));
         }
-
-
-        
-
     }
 
     return;
@@ -454,9 +429,7 @@ void sigint_handler(int sig)
     if (pid > 0) {
         kill(-pid, SIGINT);
     }   
-
-
-
+    
     return;
 }
 
