@@ -8,7 +8,7 @@
  * User 1: arni11
  * SSN: 0301892219
  * User 2: sindris12
- * SSN: 040289-xxxx
+ * SSN: 0402892409
  * === End User Information ===
  */
 #include <stdio.h>
@@ -179,10 +179,15 @@ void eval(char *cmdline)
     pid_t pid; //proccess id
 
     struct job_t *job;
-
+	
+	
     sigset_t mask;
 
-    memset(&mask, 0, sizeof(mask)); //http://www.linuxprogrammingblog.com/code-examples/blocking-signals-with-sigprocmask
+   memset(&mask, 0, sizeof(mask)); //http://www.linuxprogrammingblog.com/code-examples/blocking-signals-with-sigprocmask
+
+sigemptyset(&mask);
+sigaddset(&mask, SIGINT);
+
 
     bg = parseline(cmdline, argv);
     if (!builtin_cmd(argv)) {
@@ -278,6 +283,7 @@ int builtin_cmd(char **argv)
 {
     //bls 726 i bokinni
 
+
     if (!strcmp(argv[0], "quit"))
         exit(0);
     if (!strcmp(argv[0], "fg")) {
@@ -307,7 +313,11 @@ void do_bgfg(char **argv)
     int id;
 
     if (argv[1] == NULL) {
-        printf("too few arguments \n");
+	if (!strcmp(argv[0], "fg")) {
+		printf("fg command requires PID or %%jobid argument\n");
+	} else if (!strcmp(argv[0], "bg")) {
+		printf("bg command requires PID or %%jobid argument\n");
+	}
         return;
     }
 
@@ -316,20 +326,34 @@ void do_bgfg(char **argv)
 
         id = atoi(&argv[1][1]);
 
-        job = getjobjid(jobs, id);   
-    }
-
-    if (isdigit(argv[1][0])) {
+        job = getjobjid(jobs, id);
+   
+    } else  if (isdigit(argv[1][0])) {
         //get by pid
 
         id = atoi(&argv[1][0]);
 
-        job = getjobpid(jobs, id);    
-    }
+        job = getjobpid(jobs, id);
+    
+    } else if (!isdigit(argv[1][0])) {
+
+	if (!strcmp(argv[0], "fg")) {
+                printf("fg: argument must be a PID or %%jobid\n");
+		return;
+        } else if (!strcmp(argv[0], "bg")) {
+                printf("bg: argument must be a PID or %%jobid\n");
+		return;
+        }
+    } 
 
      if (job == NULL) {
+	if (argv[1][0] == '%') {
             printf("%s: No such job\n", argv[1]);
             return;
+	} else {
+	    printf("%s: No such process\n", argv[1]);
+            return;
+	}
         }
 
     //SIGCONT 
@@ -387,9 +411,8 @@ void sigchld_handler(int sig)
     pid_t pid;
     int status;
 
-    // printf("%d\n", pid );
+     //printf("%d\n", sig );
     
-
     while ((pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0) {
         
         struct job_t *job = getjobpid(jobs, pid);
@@ -420,17 +443,17 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
-    // printf("CTRL C\n");
-
-    pid_t pid = fgpid(jobs);
+    //printf("CTRL C\n");
+   pid_t pid = fgpid(jobs);
     // printf("%d\n", pid );
     // struct job_t *job = getjobpid(jobs, pid);
-
     if (pid > 0) {
         kill(-pid, SIGINT);
-    }   
+    }
+
+	return;
     
-    return;
+   
 }
 
 /*
