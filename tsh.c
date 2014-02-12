@@ -180,16 +180,16 @@ void eval(char *cmdline)
 
     struct job_t *job;
 	
-	
     sigset_t mask;
 
    memset(&mask, 0, sizeof(mask)); //http://www.linuxprogrammingblog.com/code-examples/blocking-signals-with-sigprocmask
 
-sigemptyset(&mask);
-sigaddset(&mask, SIGINT);
-
-
     bg = parseline(cmdline, argv);
+
+    if (argv[0] == NULL) {
+        return; //ignore empty lines
+    }
+
     if (!builtin_cmd(argv)) {
 
         sigprocmask(SIG_BLOCK, &mask, NULL);
@@ -284,16 +284,20 @@ int builtin_cmd(char **argv)
     //bls 726 i bokinni
 
 
-    if (!strcmp(argv[0], "quit"))
+    if (!strcmp(argv[0], "quit")){
         exit(0);
+    }
+
     if (!strcmp(argv[0], "fg")) {
         do_bgfg(argv);
         return 1;
     }
+
     if (!strcmp(argv[0], "bg")) {
         do_bgfg(argv);
         return 1;
     }
+
     if (!strcmp(argv[0], "jobs")) {
         listjobs(jobs);
         return 1;
@@ -337,12 +341,14 @@ void do_bgfg(char **argv)
     
     } else if (!isdigit(argv[1][0])) {
 
-	if (!strcmp(argv[0], "fg")) {
-                printf("fg: argument must be a PID or %%jobid\n");
-		return;
+	   if (!strcmp(argv[0], "fg")) {
+         printf("fg: argument must be a PID or %%jobid\n");
+		  return;
+
         } else if (!strcmp(argv[0], "bg")) {
-                printf("bg: argument must be a PID or %%jobid\n");
-		return;
+            printf("bg: argument must be a PID or %%jobid\n");
+		  return;
+
         }
     } 
 
@@ -351,9 +357,12 @@ void do_bgfg(char **argv)
         //if there is no job
             printf("%s: No such job\n", argv[1]);
             return;
+
 	   } else {
+        //else there is no process
 	    printf("%s: No such process\n", argv[1]);
-            return;
+        return;
+
 	   }
     }
 
