@@ -371,7 +371,11 @@ void do_bgfg(char **argv)
         
         int p_id = job->pid;
 
-        kill(-p_id, SIGCONT);              //kill the job and send SIGCONT
+        if (kill(-p_id, SIGCONT) == -1){
+            unix_error("failed to kill");
+            return;
+        }
+                                        //kill the job and send SIGCONT
         job->state = FG;                   //Change the state of the job
         waitfg(p_id);                      //Wait for the job to finish
 
@@ -380,7 +384,10 @@ void do_bgfg(char **argv)
 
         int p_id = job->pid;
 
-        kill(-p_id, SIGCONT);           //kill the job and send SIGCONT
+        if (kill(-p_id, SIGCONT) == -1){     //kill the job and send SIGCONT
+            unix_error("failed to kill");
+            return;
+        }          
         job->state = BG;                //Change the state of the job
         printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
 
@@ -464,7 +471,10 @@ void sigint_handler(int sig)
     // struct job_t *job = getjobpid(jobs, pid);
     if (pid > 0) {
         //kill the process and send SIGINT
-        kill(-pid, SIGINT);
+        if (kill(-pid, SIGINT) == -1){   
+            unix_error("failed to kill");
+            return;
+        }        
     }
 
 	return;
@@ -489,7 +499,10 @@ void sigtstp_handler(int sig)
 
     if (pid > 0) {
         //Kill the process and send SIGTSTP
-        kill(-pid, SIGTSTP);
+        if (kill(-pid, SIGTSTP) == -1){   
+            unix_error("failed to kill");
+            return;
+        }   
     }   
 
     return;
