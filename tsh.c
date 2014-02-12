@@ -347,14 +347,15 @@ void do_bgfg(char **argv)
     } 
 
      if (job == NULL) {
-	if (argv[1][0] == '%') {
+	   if (argv[1][0] == '%') {
+        //if there is no job
             printf("%s: No such job\n", argv[1]);
             return;
-	} else {
+	   } else {
 	    printf("%s: No such process\n", argv[1]);
             return;
-	}
-        }
+	   }
+    }
 
     //SIGCONT 
     if (!strcmp(argv[0], "fg")) { //add to fg
@@ -385,8 +386,10 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
+    //Fetching jobs that are in FG
     struct job_t *job = getjobpid(jobs, pid);
 
+    //Wait until job is finished or not in FG
     while (job->state == FG) {
         sleep(1);
     }
@@ -420,16 +423,15 @@ void sigchld_handler(int sig)
         if (WIFEXITED(status)) {
             deletejob(jobs, pid); //remove job from job array
             
-
         } else if (WIFSIGNALED(status)) {
-            //Returns the number of the signal that caused the child process to terminate. This status is only defined if WIFSIGNALED(status) returned true. (Book p.725)
             printf("Job [%d] (%d) terminated by signal %d \n",job->jid, pid, WTERMSIG(status));
+            //Returns the number of the signal that caused the child process to terminate. This status is only defined if WIFSIGNALED(status) returned true. (Book p.725)
             deletejob(jobs, pid); //remove job from job array
 
         } else if (WIFSTOPPED(status)) {
             job->state = ST;
-            //WSTOPSIG Returns the number of the signal that caused the child to stop. This status is only defined if WIFSTOPPED(status) returned true. (Book p.725)
             printf("Job [%d] (%d) stopped by signal %d \n",job->jid, pid, WSTOPSIG(status));
+            //WSTOPSIG Returns the number of the signal that caused the child to stop. This status is only defined if WIFSTOPPED(status) returned true. (Book p.725)  
         }
     }
 
@@ -444,16 +446,21 @@ void sigchld_handler(int sig)
 void sigint_handler(int sig) 
 {
     //printf("CTRL C\n");
-   pid_t pid = fgpid(jobs);
+ 
+    //Get pid 
+    pid_t pid = fgpid(jobs);
+
+
     // printf("%d\n", pid );
     // struct job_t *job = getjobpid(jobs, pid);
     if (pid > 0) {
+        //kill the process and send SIGINT
         kill(-pid, SIGINT);
     }
 
 	return;
     
-   
+
 }
 
 /*
@@ -463,12 +470,16 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
+    // printf("CTRL Z\n");
 
+    //Get pid
     pid_t pid = fgpid(jobs);
+
     // printf("%d\n", pid );
     // struct job_t *job = getjobpid(jobs, pid);
 
     if (pid > 0) {
+        //Kill the process and send SIGTSTP
         kill(-pid, SIGTSTP);
     }   
 
